@@ -1,21 +1,38 @@
-import numpy as np
-from flask import Flask, request, jsonify, render_template
 import pickle
+from flask import Flask, request, jsonify
 
-# Create flask app
-flask_app = Flask(__name__)
-model = pickle.load(open("model.pkl", "rb"))
+app = Flask(__name__)
 
-@flask_app.route("/")
-def Home():
-    return render_template("index.html")
+# Load the trained model
+with open("model.pkl", "rb") as file:
+    model = pickle.load(file)
 
-@flask_app.route("/predict", methods = ["POST"])
+
+# Check whether the API is running
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "Crop Prediction API is running"})
+
+
+# Predict the crop
+@app.route("/predict", methods=["POST"])
 def predict():
-    float_features = [float(x) for x in request.form.values()]
-    features = [np.array(float_features)]
-    prediction = model.predict(features)
-    return render_template("index.html", prediction_text = "The Predicted Crop is {}".format(prediction))
+    data = request.get_json()
+
+    features = [[
+        data["N"],
+        data["P"],
+        data["K"],
+        data["temperature"],
+        data["humidity"],
+        data["ph"],
+        data["rainfall"]
+    ]]
+
+    prediction = model.predict(features)[0]
+
+    return jsonify({"predicted_crop": str(prediction)})
+
 
 if __name__ == "__main__":
-    flask_app.run(debug=True)
+    app.run(debug=True)
